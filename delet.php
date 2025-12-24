@@ -2,7 +2,6 @@
 header("Content-Type: application/json");
 include("db.php");
 
-// Check if ID is sent
 if (!isset($_POST['id'])) {
     echo json_encode([
         "status" => "error",
@@ -11,9 +10,9 @@ if (!isset($_POST['id'])) {
     exit;
 }
 
-$id = $_POST['id'];
+$id = intval($_POST['id']);
 
-// ---- FETCH ITEM TO DELETE ---- //
+// Fetch image
 $query = $conn->query("SELECT image FROM add_equipment WHERE id = $id LIMIT 1");
 
 if ($query->num_rows == 0) {
@@ -25,16 +24,18 @@ if ($query->num_rows == 0) {
 }
 
 $row = $query->fetch_assoc();
-$imagePath = $row['image'];
+$imagePath = $row['image']; // uploads/xxx.jpg
 
-// ---- DELETE FROM DATABASE ---- //
+// Delete DB row
 $delete = $conn->query("DELETE FROM add_equipment WHERE id = $id");
 
 if ($delete) {
 
-    // Remove file if exists
-    if (!empty($imagePath) && file_exists($imagePath)) {
-        unlink($imagePath);
+    // ✅ Correct full server path
+    $fullPath = __DIR__ . "/" . $imagePath;
+
+    if (!empty($imagePath) && file_exists($fullPath)) {
+        unlink($fullPath);
     }
 
     echo json_encode([
