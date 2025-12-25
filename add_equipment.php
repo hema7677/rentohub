@@ -61,7 +61,7 @@ $sql = "INSERT INTO add_equipment (name, brand, category, price_per_day, deposit
         VALUES (?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("sssidss", $name, $brand, $category, $daily_rate, $deposit, $description, $imagePath);
+$stmt->bind_param("sssiiss", $name, $brand, $category, $daily_rate, $deposit, $description, $imagePath);
 
 if ($stmt->execute()) {
     echo json_encode([
