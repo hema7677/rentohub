@@ -1,92 +1,89 @@
 <?php
 header("Content-Type: application/json");
-
 include('db.php');
 
-// Check required ID
 if (!isset($_POST['id'])) {
-    echo json_encode(["status" => "error", "message" => "Equipment ID is required"]);
+    echo json_encode(["status" => "error", "message" => "ID required"]);
     exit;
 }
 
 $id = $_POST['id'];
 
-// ---- FETCH OLD DATA ---- //
-$queryOld = $conn->query("SELECT * FROM add_equipment WHERE id = $id");
+/* FETCH OLD DATA */
+$stmt = $conn->prepare("SELECT * FROM add_equipment WHERE id = ?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$res = $stmt->get_result();
 
-if ($queryOld->num_rows == 0) {
-    echo json_encode(["status" => "error", "message" => "Equipment Not Found"]);
+if ($res->num_rows == 0) {
+    echo json_encode(["status" => "error", "message" => "Not Found"]);
     exit;
 }
 
-$old = $queryOld->fetch_assoc();
+$old = $res->fetch_assoc();
 
-// ---- READ NEW OR EXISTING VALUES ---- //
-$name        = !empty($_POST['name'])        ? $_POST['name']        : $old['name'];
-$brand       = !empty($_POST['brand'])       ? $_POST['brand']       : $old['brand'];
-$category    = !empty($_POST['category'])    ? $_POST['category']    : $old['category'];
-$daily_rate  = !empty($_POST['daily_rate'])  ? $_POST['daily_rate']  : $old['price_per_day'];
-$deposit     = !empty($_POST['deposit'])     ? $_POST['deposit']     : $old['deposit'];
-$description = !empty($_POST['description']) ? $_POST['description'] : $old['description'];
+/* READ VALUES (FIXED) */
+$name        = isset($_POST['name'])        ? $_POST['name']        : $old['name'];
+$brand       = isset($_POST['brand'])       ? $_POST['brand']       : $old['brand'];
+$category    = isset($_POST['category'])    ? $_POST['category']    : $old['category'];
+$daily_rate  = isset($_POST['daily_rate'])  ? $_POST['daily_rate']  : $old['price_per_day'];
+$deposit     = isset($_POST['deposit'])     ? $_POST['deposit']     : $old['deposit'];
+$description = isset($_POST['description']) ? $_POST['description'] : $old['description'];
 
-// ---- IMAGE HANDLING ---- //
-$imagePath = $old['image'];  // default old image
+/* IMAGE */
+$imagePath = $old['image'];
 
-if (isset($_FILES['image']) && $_FILES['image']['size'] > 0) {
+if (!empty($_FILES['image']['name'])) {
 
-    $allowed = ["jpg", "jpeg", "png"];
-    $file_ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+    $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+    $allowed = ['jpg','jpeg','png'];
 
-    if (!in_array($file_ext, $allowed)) {
-        echo json_encode(["status" => "error", "message" => "Only JPG, JPEG, PNG allowed"]);
+    if (!in_array($ext, $allowed)) {
+        echo json_encode(["status"=>"error","message"=>"Invalid image"]);
         exit;
     }
 
-    if ($_FILES['image']['size'] > 2 * 1024 * 1024) {
-        echo json_encode(["status" => "error", "message" => "Image must be less than 2MB"]);
-        exit;
-    }
+    $dir = "uploads/";
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
 
-    $uploadDir = "uploads/";
-    if (!is_dir($uploadDir)) mkdir($uploadDir);
-
-    $imageName = time() . "_" . rand(1000, 9999) . "." . $file_ext;
-    $imagePath = $uploadDir . $imageName;
+    $file = time()."_".rand(1000,9999).".".$ext;
+    $imagePath = $dir.$file;
 
     move_uploaded_file($_FILES['image']['tmp_name'], $imagePath);
 }
 
-// ---- UPDATE DATABASE ---- //
+/* UPDATE */
 $sql = "UPDATE add_equipment SET
-        name = ?, 
-        brand = ?, 
-        category = ?, 
-        price_per_day = ?, 
-        deposit = ?, 
-        description = ?, 
-        image = ?
-        WHERE id = ?";
+        name=?,
+        brand=?,
+        category=?,
+        price_per_day=?,
+        deposit=?,
+        description=?,
+        image=?
+        WHERE id=?";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("sssiddsi", $name, $brand, $category, $daily_rate, $deposit, $description, $imagePath, $id);
+$stmt->bind_param(
+    "sssssssi",
+    $name,
+    $brand,
+    $category,
+    $daily_rate,
+    $deposit,
+    $description,
+    $imagePath,
+    $id
+);
 
 if ($stmt->execute()) {
-    echo json_encode([
-        "status" => "success",
-        "message" => "Equipment updated successfully",
-        "id" => $id,
-        "data" => [
-            "name" => $name,
-            "brand" => $brand,
-            "category" => $category,
-            "daily_rate" => $daily_rate,
-            "deposit" => $deposit,
-            "description" => $description,
-            "image" => $imagePath
-        ]
-    ]);
+echo json_encode([
+    "status" => "success",
+    "message" => "Equipment updated successfully",
+    "id" => (string)$id
+]);
 } else {
-    echo json_encode(["status" => "error", "message" => "Failed to update equipment"]);
+    echo json_encode(["status"=>"error","message"=>$stmt->error]);
 }
 
 $stmt->close();

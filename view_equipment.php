@@ -1,11 +1,17 @@
 <?php
 header("Content-Type: application/json");
-
 include('db.php');
 
-$base_url = "https://qjvq60kp-80.inc1.devtunnels.ms/";
-
-$sql = "SELECT id, name, brand, category, price_per_day, deposit, description, image 
+$sql = "SELECT 
+            id, 
+            name, 
+            brand, 
+            category, 
+            price_per_day, 
+            deposit, 
+            description, 
+            image,
+            status
         FROM add_equipment 
         ORDER BY id DESC";
 
@@ -13,14 +19,10 @@ $result = $conn->query($sql);
 
 $equipment = [];
 
-if ($result->num_rows > 0) {
+if ($result && $result->num_rows > 0) {
+
     while ($row = $result->fetch_assoc()) {
-
-        // ✅ Convert image path to full URL
-        if (!empty($row['image'])) {
-            $row['image'] = $base_url . $row['image'];
-        }
-
+        // Image will be returned as stored in DB (no base URL)
         $equipment[] = $row;
     }
 
@@ -33,7 +35,9 @@ if ($result->num_rows > 0) {
 } else {
     echo json_encode([
         "status" => "error",
-        "message" => "No equipment found"
+        "message" => "No equipment found",
+        "count" => 0,
+        "data" => []
     ]);
 }
 
