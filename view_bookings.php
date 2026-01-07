@@ -2,10 +2,18 @@
 header("Content-Type: application/json");
 require "db.php";
 
+if (!isset($_POST['user_id'])) {
+    echo json_encode(["status" => "error", "message" => "User ID missing"]);
+    exit;
+}
+
+$user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+
 // Updated table name to add_equipment
 $sql = "SELECT b.*, e.name as equipment_name, e.image as equipment_image 
         FROM bookings b 
         JOIN add_equipment e ON b.equipment_id = e.id 
+        WHERE b.user_id = '$user_id' 
         ORDER BY b.id DESC";
 
 $result = mysqli_query($conn, $sql);

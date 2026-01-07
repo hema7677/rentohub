@@ -1,45 +1,46 @@
 <?php
 header("Content-Type: application/json");
-include "db.php";
+require "db.php";
 
-if (!isset($_POST['user_id'])) {
-    echo json_encode(["status" => "error", "message" => "user_id is required"]);
+if (!isset($_POST['booking_id'])) {
+    echo json_encode(["status" => "error", "message" => "Booking ID missing"]);
     exit;
 }
 
-$user_id = $_POST['user_id'];
+$booking_id = mysqli_real_escape_string($conn, $_POST['booking_id']);
 
-$sql = "SELECT 
-            b.id AS booking_id,
-            b.days,
-            b.daily_rate,
-            b.total_amount,
-            b.status,
-            b.created_at,
-            i.name AS equipment_name,
-            i.image AS equipment_image
-        FROM bookings b
-        JOIN add_equipment i ON b.equipment_id = i.id
-        WHERE b.user_id = ?
-        ORDER BY b.id DESC";
+/**
+ * SQL logic:
+ * - Join bookings with add_equipment for product details
+ * - Join bookings with users for customer details (optional)
+ */
+$sql = "SELECT b.*, e.name as equipment_name, e.price_per_day as daily_rate, u.name as user_name, u.email as user_email
+        FROM bookings b 
+        JOIN add_equipment e ON b.equipment_id = e.id 
+        LEFT JOIN users u ON b.user_id = u.id 
+        WHERE b.id = '$booking_id' 
+        LIMIT 1";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$result = mysqli_query($conn, $sql);
 
-$data = [];
-
-while ($row = $result->fetch_assoc()) {
-    $data[] = $row;
+if ($row = mysqli_fetch_assoc($result)) {
+    echo json_encode([
+        "status" => "success",
+        "data" => [
+            "booking_id" => (int) $row['id'],
+            "equipment_name" => $row['equipment_name'],
+            "user_name" => $row['user_name'],
+            "user_email" => $row['user_email'],
+            "location" => $row['location'],
+            "days" => (int) $row['days'],
+            "daily_rate" => (double) $row['daily_rate'],
+            "total_amount" => (double) $row['total_amount'],
+            "booking_date" => $row['booking_date'],
+            "status" => $row['status'],
+            "image" => $row['image']
+        ]
+    ]);
+} else {
+    echo json_encode(["status" => "error", "message" => "Booking not found"]);
 }
-
-echo json_encode([
-    "status" => "success",
-    "count" => count($data),
-    "bookings" => $data
-]);
-
-$stmt->close();
-$conn->close();
 ?>

@@ -23,9 +23,9 @@ if (mysqli_num_rows($result) == 1) {
         "status" => "success",
         "message" => "Login successful",
         "data" => [
-            "id"       => $row['id'],
-            "name"     => $row['name'],
-            "email"    => $row['email'],
+            "id" => $row['id'],
+            "name" => $row['name'],
+            "email" => $row['email'],
             "usertype" => $row['usertype']
         ]
     ]);
